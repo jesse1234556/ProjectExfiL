@@ -1,0 +1,45 @@
+body{
+    background: #222
+}
+
+
+.terminal {
+    overflow-y: scroll;       /* enables scrolling */
+    scrollbar-width: none;    /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+    background: #222;
+    color: #33ff33;
+    font-family: 'Fira Mono', 'Consolas', monospace;
+    padding: 20px;
+    margin: 0px;
+    /* border-radius: 8px; */
+    width: 85vh;
+    height: 90vh;
+    overflow-y: auto;
+    /* box-shadow: 0 0 10px #000; */
+    position: relative;
+}
+.terminal::-webkit-scrollbar {
+    display: none;            /* Chrome, Safari, Edge */
+}
+.terminal-output {
+    white-space: pre-wrap;
+    margin-bottom: 8px;
+}
+.terminal-input-line {
+    display: flex;
+    align-items: center;
+}
+.terminal-prompt {
+    margin-right: 5px;
+    color: #00ffcc;
+}
+.terminal-input {
+    background: transparent;
+    border: none;
+    color: #33ff33;
+    outline: none;
+    font-family: inherit;
+    font-size: 1em;
+    flex: 1;
+}
