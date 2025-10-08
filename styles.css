@@ -4,6 +4,7 @@ body{
 
 
 .terminal {
+    
     overflow-y: scroll;       /* enables scrolling */
     scrollbar-width: none;    /* Firefox */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
@@ -13,7 +14,7 @@ body{
     padding: 20px;
     margin: 0px;
     /* border-radius: 8px; */
-    width: 85vh;
+    width: 85vw;
     height: 90vh;
     overflow-y: auto;
     /* box-shadow: 0 0 10px #000; */
@@ -24,17 +25,17 @@ body{
 }
 .terminal-output {
     white-space: pre-wrap;
-    margin-bottom: 8px;
+    margin-bottom: 0px;
 }
 .terminal-input-line {
     display: flex;
-    align-items: center;
+    align-items: flex-start;   /* top-align the prompt and contenteditable */
 }
+
 .terminal-prompt {
     margin-right: 5px;
     color: #00ffcc;
-}
-.terminal-input {
+}.terminal-input {
     background: transparent;
     border: none;
     color: #33ff33;
@@ -42,4 +43,8 @@ body{
     font-family: inherit;
     font-size: 1em;
     flex: 1;
+    min-height: 1.2em;       /* ensures cursor is visible */
+    white-space: pre-wrap;    /* allows multi-line input */
+    caret-color: #33ff33;     /* cursor color matches text */
 }
+
