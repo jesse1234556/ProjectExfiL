@@ -12,6 +12,10 @@ const env = {
     // you can add more later, e.g., PATH, aliases, etc.
 };
 
+const MAX_HISTORY = 50;
+
+let cmdhistory = [];
+
 function printToTerminal(text) {
     const line = document.createElement('div');
     line.textContent = text;
@@ -39,8 +43,7 @@ const fs = {
                 }
             }
         }
-    }
-      
+    }     
 }
 
 //----start of simulated syscalls-----------------------------------------------------------------------------------------------------------------
@@ -121,9 +124,28 @@ const commands = {
         description: 'Clear terminal output',
         execute: () => terminalOutput.innerHTML = ''
     },
-    man: {
-        description: 'Lists description of command',
-        execute: (args) => printToTerminal(commands[args].description)
+   man: {
+      description: 'Lists description of command',
+      execute: (args) => {
+          const cmd = args[0];
+          if (!cmd || !commands[cmd]) {
+              printToTerminal(`man: ${cmd || 'missing command'} not found`);
+              return;
+          }
+
+          // Print the description
+          printToTerminal(commands[cmd].description);
+
+          // Print the usage separately
+          if (usage[cmd]) {
+              printToTerminal(`Usage: ${usage[cmd]}`);
+          }
+      }
+     }
+,
+    mkdir: {
+      description: 'Create a new directory',
+      execute: () => alert("Placeholder"),
     },
     cd: {
         description: 'Change the current directory',
@@ -161,13 +183,41 @@ const commands = {
       } else {
         printToTerminal(result.content);
       }
-    }
-  }
-}
+       }
+     }
+   },
+   history: {
+      description: 'Display last 50 commands ran',
+      execute: () => {
+        // Show the last 50 commands (or fewer if less exist)
+        const start = Math.max(cmdhistory.length - 50, 0);
+        const recentCommands = cmdhistory.slice(start);
 
-      
+        if (recentCommands.length === 0) {
+            printToTerminal('No commands in history.');
+            return;
+        }
 
+        // Print each command with its number
+        recentCommands.forEach((cmd, index) => {
+            printToTerminal(`${start + index + 1}: ${cmd}`);
+        });
+
+      }
+   }
 };
+
+const usage = {
+  help: 'help',
+  echo: 'echo <text>',
+  clear: 'clear',
+  man: 'man <command>',
+  mkdir: 'mkdir <directory>',
+  cd: 'cd <directory>',
+  ls: 'ls [directory]',
+  cat: 'cat <file> [file...]'
+};
+
 
 
 const listOfKeys = Object.keys(commands).join(", ")
@@ -178,29 +228,78 @@ commands.help = {
     description: 'Show available commands', 
     execute: () => printToTerminal('Avaliable commands: help, ' + listOfKeys)
 }
-
+let historyIndex = null; // tracks current position in history
 
 terminalInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault(); // prevent adding a newline in contenteditable
-        const input = terminalInput.textContent; // <-- use textContent instead of value
-        printToTerminal(`${env.user}@${env.hostname}:${env.cwd}> ${input}`);
+   if (e.key === 'ArrowUp') {
+        if (cmdhistory.length === 0) return; // nothing in history
 
-        // Simple command handling
-        const [cmd, ...args] = input.trim().split(' ');
-
-        if (commands[cmd]) {
-            commands[cmd].execute(args);
-        } else if (input.trim() !== '') {
-            printToTerminal('Unknown command: ' + input);
+        if (historyIndex === null) {
+            historyIndex = cmdhistory.length - 1; // start from last command
+        } else if (historyIndex > 0) {
+            historyIndex--;
         }
-        terminalInput.textContent = '';
-        terminalPrompt.textContent = `${env.user}@${env.hostname}:${env.cwd}> `;
 
+        terminalInput.textContent = cmdhistory[historyIndex];
+        placeCaretAtEnd(terminalInput); // helper to move cursor to end
+        e.preventDefault(); // prevent cursor moving to start
     }
+
+    if (e.key === 'ArrowDown') {
+        if (historyIndex === null) return; // not browsing history
+
+        if (historyIndex < cmdhistory.length - 1) {
+            historyIndex++;
+            terminalInput.textContent = cmdhistory[historyIndex];
+        } else {
+            historyIndex = null; // back to fresh input
+            terminalInput.textContent = '';
+        }
+        placeCaretAtEnd(terminalInput);
+        e.preventDefault();
+    }
+
+if (e.key === 'Enter') {
+    e.preventDefault(); 
+    const input = terminalInput.textContent.trim(); // trim spaces
+
+    if (input === '') return; // ignore empty commands
+
+    printToTerminal(`${env.user}@${env.hostname}:${env.cwd}> ${input}`);
+
+    const [cmd, ...args] = input.split(' ');
+
+    if (commands[cmd]) {
+        commands[cmd].execute(args);
+    } else {
+        printToTerminal('Unknown command: ' + input);
+    }
+
+    cmdhistory.push(input);  // save only non-empty commands
+    historyIndex = null;     // reset history pointer
+
+      cmdhistory.push(input);
+
+      // Trim history if it exceeds the max
+      if (cmdhistory.length > MAX_HISTORY) {
+          cmdhistory.shift(); // remove the oldest command
+      }
+          
+    terminalInput.textContent = '';
+    terminalPrompt.textContent = `${env.user}@${env.hostname}:${env.cwd}> `;
+}
+
 });
 
-
+function placeCaretAtEnd(el) {
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    el.focus();
+}
 
 // Optional: Focus input on click
 terminal.addEventListener('click', () => terminalInput.focus());
