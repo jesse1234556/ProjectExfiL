@@ -3,6 +3,7 @@ const terminalInput = document.getElementById('terminal-input');
 const terminal = document.getElementById('terminal');
 const body = document.body;
 const terminalPrompt = document.getElementById('terminal-prompt');
+
 const env = {
     user: 'Guest',            // username
     hostname: 'ProjectExFiL',  // optional hostname
@@ -41,6 +42,8 @@ const fs = {
     }
       
 }
+
+//----start of simulated syscalls-----------------------------------------------------------------------------------------------------------------
 
 function resolve(path, cwd = '/') {
   if (typeof path !== 'string') throw new Error('resolve: path must be a string');
@@ -90,6 +93,25 @@ function cd(path = '/', cwd = '/') {
   }
   return { cwd: fullPath };
 }
+
+
+function readFile(path, cwd = '/') {
+  const fullPath = resolve(path, cwd);
+  const node = getNode(fullPath);
+
+  if (!node) {
+    return { error: `cat: ${path}: No such file or directory` };
+  }
+  if (node.type !== 'file') {
+    return { error: `cat: ${path}: Is a directory` };
+  }
+
+  // In the future, you can check permissions here
+  return { content: node.content || '' };
+}
+//-----end of simulated syscalls-----------------------------------------------------------------------------------------------------------------------
+
+
 const commands = {
     echo: {
         description: 'Echo text back to terminal',
@@ -123,7 +145,28 @@ const commands = {
             const output = ls(path, env.cwd);     // use env.cwd
             printToTerminal(output);
         }
+    },
+    cat: {
+  description: 'Display file contents',
+  execute: (args) => {
+    if (args.length === 0) {
+      printToTerminal('cat: missing file operand');
+      return;
     }
+
+    for (const path of args) {
+      const result = readFile(path, env.cwd);
+      if (result.error) {
+        printToTerminal(result.error);
+      } else {
+        printToTerminal(result.content);
+      }
+    }
+  }
+}
+
+      
+
 };
 
 
