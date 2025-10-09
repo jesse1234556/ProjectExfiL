@@ -84,7 +84,7 @@ function ls(path = '/', cwd = '/') {
   const node = getNode(fullPath);
   if (!node) return `ls: cannot access '${path}': No such file or directory`;
   if (node.type !== 'dir') return fullPath; // if it's a file, just return its path
-  return Object.keys(node.children).join('  ') || '(empty)';
+  return Object.keys(node.children).join('  ') || '';
 }
 
 // 4️⃣ Change directory
@@ -116,6 +116,57 @@ function readFile(path, cwd = '/') {
 
 
 const commands = {
+    mv: {
+      description: 'Move or rename a file/directory',
+      execute: (args) => {
+          if (args.length < 2) {
+              printToTerminal('mv: missing file operand');
+              return;
+          }
+
+          const srcPath = resolve(args[0], env.cwd);
+          const destPath = resolve(args[1], env.cwd);
+
+          const srcParts = srcPath.split('/').filter(Boolean);
+          const srcName = srcParts.pop();
+          const srcParentPath = '/' + srcParts.join('/');
+          const srcParent = getNode(srcParentPath);
+
+          if (!srcParent || !srcParent.children[srcName]) {
+              printToTerminal(`mv: cannot stat '${srcPath}': No such file or directory`);
+              return;
+          }
+
+          const destParts = destPath.split('/').filter(Boolean);
+          const destName = destParts.pop();
+          const destParentPath = '/' + destParts.join('/');
+          const destParent = getNode(destParentPath);
+
+          if (!destParent) {
+              printToTerminal(`mv: cannot move to '${destPath}': No such directory`);
+              return;
+          }
+
+          if (!destParent.children) destParent.children = {};
+
+          if (destParent.children[destName]) {
+              printToTerminal(`mv: cannot move to '${destPath}': File exists`);
+              return;
+          }
+
+          // Move the node
+          destParent.children[destName] = srcParent.children[srcName];
+          delete srcParent.children[srcName];
+
+          printToTerminal(`Moved '${srcPath}' to '${destPath}'`);
+              }
+          },
+    pwd: {
+    description: 'Print the current working directory',
+    execute: () => {
+        printToTerminal(env.cwd);
+              }
+         },
     echo: {
         description: 'Echo text back to terminal',
         execute: (args) => printToTerminal(args.join(' '))
@@ -144,9 +195,42 @@ const commands = {
      }
 ,
     mkdir: {
-      description: 'Create a new directory',
-      execute: () => alert("Placeholder"),
-    },
+    description: 'Create a new directory',
+    execute: (args) => {
+        if (args.length === 0) {
+            printToTerminal('mkdir: missing operand');
+            return;
+        }
+
+        const path = args[0];
+        const fullPath = resolve(path, env.cwd);
+        const parts = fullPath.split('/').filter(Boolean);
+
+        let node = fs['/']; // start at root
+        try {
+            for (const part of parts) {
+                if (!node.children) node.children = {};
+
+                // If a file exists where we want a directory
+                if (node.children[part] && node.children[part].type !== 'dir') {
+                    throw new Error(`mkdir: cannot create directory '${fullPath}': File exists`);
+                }
+
+                // Create directory if it doesn't exist
+                if (!node.children[part]) {
+                    node.children[part] = { type: 'dir', children: {} };
+                }
+
+                node = node.children[part]; // descend into directory
+            }
+
+            printToTerminal(`Directory created: ${fullPath}`);
+        } catch (err) {
+            printToTerminal(err.message);
+              }
+          }
+      },
+
     cd: {
         description: 'Change the current directory',
         execute: (args) => {
@@ -204,10 +288,52 @@ const commands = {
         });
 
       }
-   }
+   },
+   touch: {
+    description: 'Create a new empty file',
+    execute: (args) => {
+        if (args.length === 0) {
+            printToTerminal('touch: missing file operand');
+            return;
+        }
+
+        const path = args[0];
+        const fullPath = resolve(path, env.cwd);
+        const parts = fullPath.split('/').filter(Boolean);
+        const fileName = parts.pop(); // last part is the file
+
+        // Get the parent directory
+        const parentPath = '/' + parts.join('/');
+        const parentNode = getNode(parentPath);
+
+        if (!parentNode) {
+            printToTerminal(`touch: cannot create file '${fullPath}': No such directory`);
+            return;
+        }
+
+        if (!parentNode.children) parentNode.children = {};
+
+        if (parentNode.children[fileName]) {
+            if (parentNode.children[fileName].type === 'dir') {
+                printToTerminal(`touch: cannot create file '${fullPath}': Is a directory`);
+                return;
+            } else {
+                printToTerminal(`File already exists: ${fullPath}`);
+                return;
+            }
+        }
+
+        // Create the new file
+        parentNode.children[fileName] = { type: 'file', content: '' };
+        printToTerminal(`File created: ${fullPath}`);
+          }
+      },
+
 };
 
 const usage = {
+  mv: 'mv <source> <destination>',
+  pwd: 'pwd',
   help: 'help',
   echo: 'echo <text>',
   clear: 'clear',
@@ -215,7 +341,9 @@ const usage = {
   mkdir: 'mkdir <directory>',
   cd: 'cd <directory>',
   ls: 'ls [directory]',
-  cat: 'cat <file> [file...]'
+  cat: 'cat <file> [file...]',
+  history: 'history',
+  touch: 'touch <file>',
 };
 
 
@@ -275,10 +403,13 @@ if (e.key === 'Enter') {
         printToTerminal('Unknown command: ' + input);
     }
 
-    cmdhistory.push(input);  // save only non-empty commands
+  
     historyIndex = null;     // reset history pointer
 
-      cmdhistory.push(input);
+    if (input.trim() !== '' && input !== cmdhistory[cmdhistory.length - 1]) {
+    cmdhistory.push(input);
+}
+
 
       // Trim history if it exceeds the max
       if (cmdhistory.length > MAX_HISTORY) {
