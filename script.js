@@ -23,9 +23,13 @@ function printToTerminal(text) {
     terminal.scrollTop = terminal.scrollHeight;
 }
 
-//focus input when anywhere is clicked or a keypress is detected
-body.addEventListener('click', () => terminalInput.focus());
-body.addEventListener('keydown', () => terminalInput.focus());
+// Focus input when anywhere is clicked or a keypress is detected,
+// but ignore if Ctrl or Alt is held
+body.addEventListener('keydown', (e) => {
+    if (!e.ctrlKey && !e.altKey) {
+        terminalInput.focus();
+    }
+});
 
 const fs = {
     '/': {
@@ -112,59 +116,78 @@ function readFile(path, cwd = '/') {
   // In the future, you can check permissions here
   return { content: node.content || '' };
 }
+
 //-----end of simulated syscalls-----------------------------------------------------------------------------------------------------------------------
 
 
 const commands = {
     mv: {
-      description: 'Move or rename a file/directory',
-      execute: (args) => {
-          if (args.length < 2) {
-              printToTerminal('mv: missing file operand');
-              return;
-          }
+        description: 'Move or rename a file/directory',
+        execute: (args) => {
+            if (args.length < 2) {
+                printToTerminal('mv: missing file operand');
+                return;
+            }
 
-          const srcPath = resolve(args[0], env.cwd);
-          const destPath = resolve(args[1], env.cwd);
+            const srcPath = resolve(args[0], env.cwd);
+            const destPath = resolve(args[1], env.cwd);
 
-          const srcParts = srcPath.split('/').filter(Boolean);
-          const srcName = srcParts.pop();
-          const srcParentPath = '/' + srcParts.join('/');
-          const srcParent = getNode(srcParentPath);
+            // Get source node and parent
+            const srcParts = srcPath.split('/').filter(Boolean);
+            const srcName = srcParts.pop();
+            const srcParentPath = '/' + srcParts.join('/');
+            const srcParent = getNode(srcParentPath);
 
-          if (!srcParent || !srcParent.children[srcName]) {
-              printToTerminal(`mv: cannot stat '${srcPath}': No such file or directory`);
-              return;
-          }
+            if (!srcParent || !srcParent.children[srcName]) {
+                printToTerminal(`mv: cannot stat '${srcPath}': No such file or directory`);
+                return;
+            }
 
-          const destParts = destPath.split('/').filter(Boolean);
-          const destName = destParts.pop();
-          const destParentPath = '/' + destParts.join('/');
-          const destParent = getNode(destParentPath);
+            const destParts = destPath.split('/').filter(Boolean);
+            const destName = destParts.pop();
+            const destParentPath = '/' + destParts.join('/');
+            let destParent = getNode(destParentPath);
 
-          if (!destParent) {
-              printToTerminal(`mv: cannot move to '${destPath}': No such directory`);
-              return;
-          }
+            if (!destParent) {
+                printToTerminal(`mv: cannot move to '${destPath}': No such directory`);
+                return;
+            }
 
-          if (!destParent.children) destParent.children = {};
+            if (!destParent.children) destParent.children = {};
 
-          if (destParent.children[destName]) {
-              printToTerminal(`mv: cannot move to '${destPath}': File exists`);
-              return;
-          }
+            let finalDestName = destName;
+            let finalDestParent = destParent;
 
-          // Move the node
-          destParent.children[destName] = srcParent.children[srcName];
-          delete srcParent.children[srcName];
+            // If destination exists and is a directory, move inside it
+            if (destParent.children[destName] && destParent.children[destName].type === 'dir') {
+                finalDestParent = destParent.children[destName];
+                finalDestName = srcName;
+            }
 
-          printToTerminal(`Moved '${srcPath}' to '${destPath}'`);
-              }
-          },
+            // Check if destination file already exists
+            if (finalDestParent.children[finalDestName]) {
+                printToTerminal(`mv: cannot move to '${destPath}': File exists`);
+                return;
+            }
+
+            // Move the node
+            finalDestParent.children[finalDestName] = srcParent.children[srcName];
+            delete srcParent.children[srcName];
+
+            printToTerminal(`Moved '${srcPath}' to '${destPath}'`);
+        }
+    },
+
     pwd: {
     description: 'Print the current working directory',
     execute: () => {
         printToTerminal(env.cwd);
+              }
+         },
+         whoami: {
+    description: 'Display current active user',
+    execute: () => {
+        printToTerminal(env.user);
               }
          },
     echo: {
@@ -328,10 +351,244 @@ const commands = {
         printToTerminal(`File created: ${fullPath}`);
           }
       },
+      date: {
+    description: 'Print the current date and time',
+    execute: () => {
+        const now = new Date();
+        printToTerminal(now.toString());
+        }
+    },
+   cp: {
+    description: 'Copy a file or directory',
+    execute: (args) => {
+        if (args.length < 2) {
+            printToTerminal('cp: missing file operand');
+            return;
+        }
+
+        // Handle flags
+        let recursive = false;
+        if (args[0].startsWith('-')) {
+            const flags = args.shift();
+            if (flags.includes('r')) recursive = true;
+            else {
+                printToTerminal(`cp: invalid option '${flags}'`);
+                return;
+            }
+        }
+
+        const srcPath = resolve(args[0], env.cwd);
+        const destPath = resolve(args[1], env.cwd);
+
+        // Get source node and parent
+        const srcParts = srcPath.split('/').filter(Boolean);
+        const srcName = srcParts.pop();
+        const srcParentPath = '/' + srcParts.join('/');
+        const srcParent = getNode(srcParentPath);
+
+        if (!srcParent || !srcParent.children[srcName]) {
+            printToTerminal(`cp: cannot stat '${srcPath}': No such file or directory`);
+            return;
+        }
+
+        const srcNode = srcParent.children[srcName];
+
+        // If source is a directory and not recursive, error
+        if (srcNode.type === 'dir' && !recursive) {
+            printToTerminal(`cp: -r not specified; omitting directory '${srcPath}'`);
+            return;
+        }
+
+        // Resolve destination
+        const destParts = destPath.split('/').filter(Boolean);
+        const destName = destParts.pop();
+        const destParentPath = '/' + destParts.join('/');
+        let destParent = getNode(destParentPath);
+
+        if (!destParent) {
+            printToTerminal(`cp: cannot copy to '${destPath}': No such directory`);
+            return;
+        }
+
+        if (!destParent.children) destParent.children = {};
+
+        let finalDestName = destName;
+        let finalDestParent = destParent;
+
+        // If destination exists and is a directory, copy inside it
+        if (destParent.children[destName] && destParent.children[destName].type === 'dir') {
+            finalDestParent = destParent.children[destName];
+            finalDestName = srcName;
+        }
+
+        // Recursive copy function
+        const copyNode = (node) => {
+            if (node.type === 'file') {
+                return { type: 'file', content: node.content };
+            } else if (node.type === 'dir') {
+                const newDir = { type: 'dir', children: {} };
+                for (const key in node.children) {
+                    newDir.children[key] = copyNode(node.children[key]);
+                }
+                return newDir;
+            }
+        };
+
+        // Check if destination already exists
+        if (finalDestParent.children[finalDestName]) {
+            printToTerminal(`cp: cannot copy to '${destPath}': File exists`);
+            return;
+        }
+
+        // Perform copy
+        finalDestParent.children[finalDestName] = copyNode(srcNode);
+        printToTerminal(`Copied '${srcPath}' to '${destPath}'`);
+    }
+},
+grep: {
+    description: 'Search for a pattern in files or directories',
+    execute: (args) => {
+        if (args.length < 2) {
+            printToTerminal('grep: missing operand');
+            printToTerminal('Usage: grep [-r] <pattern> <file|dir> ...');
+            return;
+        }
+
+        let recursive = false;
+
+        // Handle flags
+        while (args[0].startsWith('-')) {
+            const flags = args.shift();
+            if (flags.includes('r')) recursive = true;
+            else {
+                printToTerminal(`grep: invalid option '${flags}'`);
+                return;
+            }
+        }
+
+        if (args.length < 2) {
+            printToTerminal('grep: missing operand after flags');
+            return;
+        }
+
+        const pattern = args[0];
+        const targets = args.slice(1);
+
+        // Recursive search function for files
+        const searchNode = (node, currentPath) => {
+            const results = [];
+
+            if (node.type === 'file') {
+                const lines = (node.content || '').split('\n');
+                lines.forEach(line => {
+                    if (line.includes(pattern)) {
+                        results.push(`${currentPath}: ${line}`);
+                    }
+                });
+            } else if (node.type === 'dir' && recursive) {
+                for (const key in node.children) {
+                    results.push(...searchNode(node.children[key], currentPath + '/' + key));
+                }
+            }
+
+            return results;
+        };
+
+        // Iterate over all targets
+        let allResults = [];
+        targets.forEach(target => {
+            const fullPath = resolve(target, env.cwd);
+            const node = getNode(fullPath);
+            if (!node) {
+                printToTerminal(`grep: ${target}: No such file or directory`);
+                return;
+            }
+            allResults.push(...searchNode(node, fullPath === '/' ? '' : fullPath));
+        });
+
+        // Print results
+        if (allResults.length === 0) {
+            printToTerminal(''); // no matches
+        } else {
+            allResults.forEach(line => printToTerminal(line));
+        }
+    }
+},
+
+rm: {
+    description: 'Remove a file or directory',
+    execute: (args) => {
+        if (args.length === 0) {
+            printToTerminal('rm: missing operand');
+            return;
+        }
+
+        // Handle flags
+        let recursive = false;
+        if (args[0].startsWith('-')) {
+            const flags = args.shift();
+            if (flags.includes('r')) recursive = true;
+            else {
+                printToTerminal(`rm: invalid option '${flags}'`);
+                return;
+            }
+        }
+
+        const path = resolve(args[0], env.cwd);
+
+        // Prevent deleting the current working directory or its parents
+        if (env.cwd === path || env.cwd.startsWith(path + '/')) {
+            printToTerminal(`rm: cannot remove '${path}': current directory or parent directory`);
+            return;
+        }
+
+        // Get node and parent
+        const parts = path.split('/').filter(Boolean);
+        const name = parts.pop();
+        const parentPath = '/' + parts.join('/');
+        const parentNode = getNode(parentPath);
+
+        if (!parentNode || !parentNode.children[name]) {
+            printToTerminal(`rm: cannot remove '${path}': No such file or directory`);
+            return;
+        }
+
+        const node = parentNode.children[name];
+
+        // Handle directories
+        if (node.type === 'dir') {
+            if (!recursive) {
+                printToTerminal(`rm: cannot remove '${path}': Is a directory`);
+                return;
+            }
+        }
+
+        // Recursive delete function
+        const deleteNode = (n) => {
+            if (n.type === 'dir') {
+                for (const key in n.children) {
+                    deleteNode(n.children[key]);
+                }
+            }
+            // Node will be removed by parent after recursion
+        };
+
+        if (node.type === 'dir') deleteNode(node);
+
+        // Delete from parent
+        delete parentNode.children[name];
+        printToTerminal(`Removed '${path}'`);
+    }
+},
 
 };
 
 const usage = {
+  grep: 'grep [-r] <pattern> <file|dir> ...',
+  rm: 'rm [-r] <file>',
+  cp: 'cp [-r] <source> <destination>',
+  date: 'date',
+  whoami: 'whoami',
   mv: 'mv <source> <destination>',
   pwd: 'pwd',
   help: 'help',
@@ -431,9 +688,6 @@ function placeCaretAtEnd(el) {
     sel.addRange(range);
     el.focus();
 }
-
-// Optional: Focus input on click
-terminal.addEventListener('click', () => terminalInput.focus());
 
 // Welcome message
 printToTerminal('Welcome to the JS Terminal! Type "help" for commands.');
