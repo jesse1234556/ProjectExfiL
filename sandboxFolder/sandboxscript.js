@@ -446,6 +446,21 @@ const commands = {
     }
 },
 
+mainmenu: {
+    description: "Return to Main Menu",
+    execute: (args) => {
+        console.log('args:', args); // already shows ['-f']
+        const flag = args[0];
+        if (flag === "-f") {
+            printToTerminal("Redirecting to index.html...");
+             window.location.href = 'index.html';
+        } else {
+            printToTerminal("Are you sure? Run 'mainmenu -f' to confirm.");
+        }
+    }
+},
+
+
 grep: {
     description: 'Search for a pattern in files or directories',
     execute: (args) => {
@@ -585,6 +600,7 @@ rm: {
 };
 
 const usage = {
+  mainmenu: "mainmenu [-f]",
   grep: 'grep [-r] <pattern> <file|dir> ...',
   rm: 'rm [-r] <file>',
   cp: 'cp [-r] <source> <destination>',
