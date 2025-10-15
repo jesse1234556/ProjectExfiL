@@ -1,0 +1,93 @@
+/* Custom font */
+@font-face {
+    font-family: 'Glitchy';
+    src: url('GlitchGoblin-2O87v.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Body styling */
+body {
+    background: #222;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    margin: 0;
+    height: 100vh;
+    position: relative;
+}
+
+/* Header absolutely positioned at the top */
+h1 {
+    position: absolute;
+    top: 17%;
+    left: 50%;
+    transform: translateX(-50%);
+    color: greenyellow;
+    font-size: 75px;
+    font-family: 'Glitchy', Arial, sans-serif;
+    margin: 0;
+}
+
+/* Option box perfectly centered */
+.optionBox {
+    white-space: nowrap;
+    font-size: 25px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    width: 15%;
+    border: 2px solid #0f0;
+    border-radius: 5px;
+    background-color: #111;
+    overflow: hidden;
+}
+
+
+.option-content span {
+    flex: 1; /* take up remaining space */
+}
+.option {
+    display: flex;
+    align-items: center; /* vertically center both text and SVG */
+    justify-content: flex-start; /* keep everything starting from left */
+    position: relative; /* needed for absolute positioning of SVG */
+    padding: 40px 10px;
+    margin: 0;
+    border-bottom: 1px solid #0a0;
+    font-family: 'Courier New', Courier, monospace;
+    color: #0f0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+
+.option:last-child {
+    border-bottom: none;
+}
+
+.option:hover {
+    background-color: #020;
+}
+
+/* Triangle SVG styling */
+.triangle {
+    width: 50px;
+    height: 50px;
+    transform-origin: 50% 50%;
+    filter: drop-shadow(0 0 5px #0f0);
+    text-align: center;
+   
+}
+
+
+.option-content svg {
+    position: absolute;
+    left: 75%; /* center horizontally in the option box */
+    transform: translateX(-50%); /* perfect horizontal centering */
+    width: 30px;
+    height: 30px;
+    filter: drop-shadow(0 0 5px #0f0);
+}

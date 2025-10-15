@@ -445,6 +445,7 @@ const commands = {
         printToTerminal(`Copied '${srcPath}' to '${destPath}'`);
     }
 },
+
 grep: {
     description: 'Search for a pattern in files or directories',
     execute: (args) => {
@@ -603,11 +604,7 @@ const usage = {
   touch: 'touch <file>',
 };
 
-
-
 const listOfKeys = Object.keys(commands).join(", ")
-
-
 
 commands.help = {
     description: 'Show available commands', 
