@@ -35,20 +35,54 @@ const fs = {
     '/': {
         type: 'dir',
         children: {
+            'bin': {
+                type: 'dir',
+                children: {
+                    'ls': { type: 'file', content: 'binary for ls' },
+                    'cat': { type: 'file', content: 'binary for cat' }
+                }
+            },
+            'sbin': {
+                type: 'dir',
+                children: {
+                    'shutdown': { type: 'file', content: 'binary for shutdown' }
+                }
+            },
+            'etc': {
+                type: 'dir',
+                children: {
+                    'passwd': { type: 'file', content: 'root:x:0:0:root:/root:/bin/bash' },
+                    'hosts': { type: 'file', content: '127.0.0.1 localhost' }
+                }
+            },
+            'lib': { type: 'dir', children: {} },
+            'tmp': { type: 'dir', children: {} },
+            'var': { type: 'dir', children: { 'log': { type: 'dir', children: {} } } },
+            'usr': {
+                type: 'dir',
+                children: {
+                    'bin': { type: 'dir', children: {} },
+                    'lib': { type: 'dir', children: {} },
+                    'share': { type: 'dir', children: {} }
+                }
+            },
             'home': {
                 type: 'dir',
                 children: {
                     'user': {
                         type: 'dir',
                         children: {
-                            'notes.txt': {type: 'file', content: 'Helloo worldd!!'}
+                            'notes.txt': { type: 'file', content: 'Helloo worldd!!' },
+                            'todo.txt': { type: 'file', content: 'Buy milk\nFinish project' },
+                            'readme.md': { type: 'file', content: '# Welcome to your home directory' }
                         }
                     }
                 }
             }
         }
-    }     
-}
+    }
+};
+
 
 //----start of simulated syscalls-----------------------------------------------------------------------------------------------------------------
 
